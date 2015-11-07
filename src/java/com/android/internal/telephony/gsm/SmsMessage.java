@@ -17,10 +17,11 @@
 package com.android.internal.telephony.gsm;
 
 import android.telephony.PhoneNumberUtils;
-import android.text.format.Time;
 import android.telephony.Rlog;
+import android.telephony.util.GetTelephony;
 import android.content.res.Resources;
 import android.text.TextUtils;
+import android.text.format.Time;
 
 import com.android.internal.telephony.EncodeException;
 import com.android.internal.telephony.GsmAlphabet;
@@ -885,7 +886,12 @@ public class SmsMessage extends SmsMessageBase {
             String ret;
 
             try {
-                ret = new String(mPdu, mCur, byteCount, "KSC5601");
+                // For KT MMS
+                if (GetTelephony.getProp().equals("KT")) {
+                    ret = new String(mPdu, mCur, byteCount, "EUC-KR");
+                } else {
+                    ret = new String(mPdu, mCur, byteCount, "KSC5601");
+                }
             } catch (UnsupportedEncodingException ex) {
                 ret = "";
                 Rlog.e(LOG_TAG, "implausible UnsupportedEncodingException", ex);
@@ -1264,12 +1270,17 @@ public class SmsMessage extends SmsMessageBase {
                         encodingType = ENCODING_8BIT;
                         break;
                     }
-
-                case 3: // reserved
-                    Rlog.w(LOG_TAG, "1 - Unsupported SMS data coding scheme "
-                            + (mDataCodingScheme & 0xff));
-                    encodingType = ENCODING_8BIT;
+                // For KT MMS
+                case 3: // korean or reserved
+                    if (GetTelephony.getProp().equals("KT")) {
+                        encodingType = ENCODING_KSC5601;
+                    } else {
+                        Rlog.w(LOG_TAG, "1 - Unsupported SMS data coding scheme "
+                                + (mDataCodingScheme & 0xff));
+                        encodingType = ENCODING_8BIT;
+                    }
                     break;
+
                 }
             }
         } else if ((mDataCodingScheme & 0xf0) == 0xf0) {

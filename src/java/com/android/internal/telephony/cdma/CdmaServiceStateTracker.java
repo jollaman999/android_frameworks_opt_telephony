@@ -41,6 +41,7 @@ import android.telephony.ServiceState;
 import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
 import android.telephony.cdma.CdmaCellLocation;
+import android.telephony.util.GetTelephony;
 import android.text.TextUtils;
 import android.util.EventLog;
 import android.util.TimeUtils;
@@ -426,6 +427,11 @@ public class CdmaServiceStateTracker extends ServiceStateTracker {
                         mPrlVersion = cdmaSubscription[4];
                     }
                     if (DBG) log("GET_CDMA_SUBSCRIPTION: MDN=" + mMdn);
+
+                    // For LGU SMS
+                    if (GetTelephony.getProp().equals("LGU")) {
+                        com.android.internal.telephony.cdma.sms.BearerData.callbackAddr = mMdn;
+                    }
 
                     mIsMinInfoReady = true;
 

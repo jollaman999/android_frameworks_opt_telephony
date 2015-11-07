@@ -23,6 +23,7 @@ import android.telephony.PhoneNumberUtils;
 import android.telephony.SmsCbLocation;
 import android.telephony.SmsCbMessage;
 import android.telephony.cdma.CdmaSmsCbProgramData;
+import android.telephony.util.GetTelephony;
 import android.telephony.Rlog;
 import android.util.Log;
 import android.text.TextUtils;
@@ -796,6 +797,35 @@ public class SmsMessage extends SmsMessageBase {
             return;
         }
         mBearerData = BearerData.decode(mEnvelope.bearerData);
+
+        // For LGU MMS
+        String telephony = GetTelephony.getProp();
+        if (telephony.equals("LGU") && mEnvelope.teleService == 49173) {
+            int i = 3;
+            for ( ; ; i++) {
+                if ( mBearerData.userData.payloadStr.substring(i-1,i).equals(" ") )
+                break;
+            }
+            String tmpaddr = mBearerData.userData.payloadStr.substring(2,i-1);
+
+            // convert the value if it is 4-bit DTMF to 8
+            // bit
+            CdmaSmsAddress tmpAddr = CdmaSmsAddress.parse(tmpaddr);
+            byte[] data = new byte[tmpAddr.numberOfDigits];
+            byte b = 0x00;
+            for (int index = 0; index < tmpAddr.numberOfDigits; index++) {
+                b = (byte) (tmpAddr.origBytes[index]);
+                data[index] = convertDtmfToAscii(b);
+            }
+
+            mEnvelope.origAddress = CdmaSmsAddress.parse(tmpaddr);
+            mEnvelope.origAddress.origBytes = data;
+            mOriginatingAddress = CdmaSmsAddress.parse(tmpaddr);
+            mOriginatingAddress.origBytes = data;
+            mBearerData.callbackNumber = CdmaSmsAddress.parse(tmpaddr);
+            mEnvelope.teleService = 4098;
+        }
+
         if (Rlog.isLoggable(LOGGABLE_TAG, Log.VERBOSE)) {
             Rlog.d(LOG_TAG, "MT raw BearerData = '" +
                       HexDump.toHexString(mEnvelope.bearerData) + "'");
